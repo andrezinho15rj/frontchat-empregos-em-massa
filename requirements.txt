@@ -1,0 +1,12 @@
+PySide6>=6.6
+requests>=2.31
+beautifulsoup4>=4.12
+lxml>=5.0
+dnspython>=2.4
+openpyxl>=3.1
+python-dotenv>=1.0
+pdfplumber>=0.11
+python-docx>=1.1
+keyring>=24.0
+# Optional: only required if you enable the "navegador (Playwright)" collector
+# playwright>=1.40

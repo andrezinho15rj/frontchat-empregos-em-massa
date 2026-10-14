@@ -1,0 +1,15 @@
+{
+    "python.defaultInterpreterPath": ".venv\\Scripts\\python.exe",
+    "python.testing.unittestEnabled": true,
+    "python.testing.unittestArgs": [
+        "-v",
+        "-s",
+        "tests",
+        "-t",
+        "."
+    ],
+    "python.testing.pytestEnabled": false,
+    "files.encoding": "utf8",
+    "files.trimTrailingWhitespace": true,
+    "editor.tabSize": 4
+}
