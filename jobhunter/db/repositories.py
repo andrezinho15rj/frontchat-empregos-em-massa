@@ -176,9 +176,11 @@ class ContactRepo:
     def add(self, company_id: int, email: str | None = None, form_url: str | None = None,
             domain: str | None = None, source_url: str | None = None,
             category: str = "", status: str = EmailStatus.UNCHECKED.value,
-            job_id: int | None = None) -> Optional[int]:
+            job_id: int | None = None, phone: str | None = None) -> Optional[int]:
         email_norm = (email or "").strip().lower() or None
-        # dedup natural: mesmo email na mesma empresa
+        phone_norm = (phone or "").strip() or None
+        form_norm = (form_url or "").strip() or None
+        # dedup natural: mesmo email, telefone ou formulario na mesma empresa
         if email_norm:
             existing = database.query_one(
                 "SELECT id FROM contacts WHERE email=? AND company_id=?",
@@ -186,11 +188,25 @@ class ContactRepo:
             )
             if existing:
                 return existing["id"]
+        if phone_norm:
+            existing = database.query_one(
+                "SELECT id FROM contacts WHERE phone=? AND company_id=?",
+                (phone_norm, company_id),
+            )
+            if existing:
+                return existing["id"]
+        if form_norm:
+            existing = database.query_one(
+                "SELECT id FROM contacts WHERE form_url=? AND company_id=?",
+                (form_norm, company_id),
+            )
+            if existing:
+                return existing["id"]
         cur = database.execute(
-            """INSERT INTO contacts(company_id, job_id, email, form_url, domain,
+            """INSERT INTO contacts(company_id, job_id, email, phone, form_url, domain,
                 source_url, category, status, found_at)
-               VALUES(?,?,?,?,?,?,?,?,?)""",
-            (company_id, job_id, email_norm, form_url, domain, source_url,
+               VALUES(?,?,?,?,?,?,?,?,?,?)""",
+            (company_id, job_id, email_norm, phone_norm, form_norm, domain, source_url,
              category, status, _now()),
         )
         return cur.lastrowid
@@ -213,8 +229,9 @@ class ContactRepo:
         clauses, params = [], []
         if search:
             like = f"%{search}%"
-            clauses.append("(ct.email LIKE ? OR c.name LIKE ? OR ct.domain LIKE ?)")
-            params += [like, like, like]
+            clauses.append("(ct.email LIKE ? OR ct.phone LIKE ? OR c.name LIKE ? "
+                           "OR ct.domain LIKE ?)")
+            params += [like, like, like, like]
         if status:
             clauses.append("ct.status=?")
             params.append(status)

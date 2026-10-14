@@ -92,6 +92,11 @@ class SearchJobsPage(PageBase):
         results_lbl = QLabel("Resultados")
         results_lbl.setObjectName("SectionTitle")
         self.root.addWidget(results_lbl)
+        self.empty_lbl = QLabel("")
+        self.empty_lbl.setObjectName("Muted")
+        self.empty_lbl.setWordWrap(True)
+        self.empty_lbl.setVisible(False)
+        self.root.addWidget(self.empty_lbl)
         self.table = make_table([
             ("title", "Cargo"), ("company", "Empresa"), ("location", "Local"),
             ("mode", "Modalidade"), ("source", "Fonte"), ("published", "Publicado"),
@@ -162,6 +167,7 @@ class SearchJobsPage(PageBase):
 
     def load_table(self) -> None:
         from ...db.repositories import job_repo
+        self.table.setSortingEnabled(False)
         self.table.setRowCount(0)
         for job in job_repo.list(limit=1000):
             add_row(self.table, [
@@ -170,6 +176,15 @@ class SearchJobsPage(PageBase):
                 job["work_mode"] or "—", job["source"],
                 (job["published_at"] or "")[:10], job["url"],
             ], user_data=job["id"])
+        self.table.setSortingEnabled(True)
+        total = self.table.rowCount()
+        if total == 0:
+            self.empty_lbl.setText(
+                "Nenhuma vaga encontrada. Verifique a conexão com a internet, "
+                "reduza a busca (limpe o campo Cargo) e clique em “Pesquisar vagas”.")
+            self.empty_lbl.setVisible(True)
+        else:
+            self.empty_lbl.setVisible(False)
 
     def discover_contacts(self) -> None:
         from ...db.repositories import job_repo
@@ -201,6 +216,7 @@ class SearchJobsPage(PageBase):
                 agg.emails_found += rep.emails_found
                 agg.emails_saved += rep.emails_saved
                 agg.forms_found += rep.forms_found
+                agg.phones_saved += rep.phones_saved
                 agg.errors.extend(rep.errors)
             except Exception as exc:
                 agg.errors.append(str(exc))
@@ -210,9 +226,11 @@ class SearchJobsPage(PageBase):
         self.progress.setVisible(False)
         self.contacts_btn.setEnabled(True)
         self.search_btn.setEnabled(True)
-        self.status_lbl.setText(f"Contatos: {report.emails_saved} salvos, "
+        self.status_lbl.setText(f"Contatos: {report.emails_saved} e-mails, "
+                                f"{report.phones_saved} telefones, "
                                 f"{report.forms_found} formulários.")
-        self.toast(f"Descoberta concluída: {report.emails_saved} contatos, "
+        self.toast(f"Descoberta concluída: {report.emails_saved} e-mails, "
+                   f"{report.phones_saved} telefones, "
                    f"{report.forms_found} formulários.", "success")
 
     def on_show(self) -> None:

@@ -32,6 +32,7 @@ class EmailStatus(str, Enum):
     DUPLICATE = "E-mail duplicado"
     INADEQUATE = "Contato inadequado para candidatura"
     FORM_AVAILABLE = "Formulário de candidatura disponível"
+    PHONE_FOUND = "Telefone encontrado"
     UNCHECKED = "Não verificado"
 
 

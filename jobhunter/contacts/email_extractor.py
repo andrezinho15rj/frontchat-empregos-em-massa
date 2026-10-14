@@ -29,6 +29,15 @@ OBFUSCATED_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Telefones publicos (foco Brasil + formato internacional). Somente o que
+# estiver publicado na pagina; nunca geramos numeros.
+PHONE_RE = re.compile(
+    r"(?:(?:\+|00)\s*55[\s.\-]*)?"          # +55 opcional
+    r"(?:\(?\d{2}\)?[\s.\-]*)"              # DDD (opcional, ex.: (11) / 11)
+    r"(?:9?\d{4}[\s.\-]*\d{4})"             # numero (fixo ou celular)
+)
+PHONE_0800_RE = re.compile(r"0800[\s.\-]*\d{3}[\s.\-]*\d{3,4}")
+
 
 def _deobfuscate(text: str) -> str:
     """Converte 'nome [at] dominio [dot] com' em 'nome@dominio.com' (conteudo publico)."""
@@ -38,10 +47,20 @@ def _deobfuscate(text: str) -> str:
     text = re.sub(r"\s+ponto\s+", ".", text, flags=re.I)
     return text
 
-FORM_KEYWORDS = [
-    "formul", "candidat", "apply", "inscri", "trabalhe", "vaga", "carreira",
-    "career", "job", "recrutamento", "processo seletivo", "curriculo",
-]
+# Pistas de links de candidatura REAIS (evitam capturar menus/categorias).
+APPLY_HINTS = (
+    "/apply", "apply?", "/candidat", "candidatar", "trabalhe-conosco",
+    "trabalheconosco", "/selecao", "seleção", "/recrutamento", "/inscri",
+    "/job/", "/jobs/", "/vaga/", "/vagas/", "/vaga-", "/emprego/",
+    "greenhouse.io", "lever.co", "workable.com", "gupy.io", "ashbyhq.com",
+    "recruitee.com", "breezy.hr", "smartrecruiters.com", "myworkdayjobs.com",
+    "icims.com", "jobvite.com", "solides", "recrutei", "kenoby", "empregare",
+    "catho.com", "vagas.com", "infojobs", "linkedin.com/jobs",
+)
+
+# Nao tratar menus/lojas de categorias como formulario.
+FORM_EXCLUDE = ("/category/", "/categories/", "/tag/", "/tags/", "/blog",
+                "/busca", "/search", "?page=", "/rss", "javascript:")
 
 HEADERS = {
     "User-Agent": (
@@ -67,11 +86,43 @@ class ExtractedContact:
 
 
 @dataclass
+class ExtractedPhone:
+    phone: str
+    source_url: str
+    context: str = ""
+
+
+@dataclass
 class ExtractResult:
     emails: list[ExtractedContact] = field(default_factory=list)
+    phones: list[ExtractedPhone] = field(default_factory=list)
     form_urls: list[str] = field(default_factory=list)
     pages_fetched: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+
+
+def _normalize_phone(raw: str) -> str:
+    """Normaliza um telefone publicado, sem inventar digitos."""
+    if not raw:
+        return ""
+    digits = re.sub(r"\D", "", raw)
+    if digits.startswith("0055"):
+        digits = digits[2:]
+    if digits.startswith("0800") and len(digits) in (10, 11):
+        return f"0800 {digits[4:7]} {digits[7:]}"
+    if len(digits) < 8 or len(digits) > 13:
+        return ""
+    if digits.startswith("55") and len(digits) in (12, 13):
+        ddd, num = digits[2:4], digits[4:]
+    elif len(digits) in (10, 11):
+        ddd, num = digits[:2], digits[2:]
+    else:
+        return f"+{digits}" if digits.startswith("55") else digits
+    if len(num) == 9:
+        return f"+55 ({ddd}) {num[:5]}-{num[5:]}"
+    if len(num) == 8:
+        return f"+55 ({ddd}) {num[:4]}-{num[4:]}"
+    return f"+55 ({ddd}) {num}"
 
 
 def _decode_cloudflare(encoded: str) -> str:
@@ -124,14 +175,35 @@ def extract_from_html(html: str, base_url: str) -> ExtractResult:
         result.emails.append(ExtractedContact(_clean(m.group(0)), base_url,
                                                "e-mail ofuscado (at/dot)"))
 
-    # 5) formularios de candidatura
+    # 5) formularios/links de candidatura reais
     for a in soup.find_all("a", href=True):
         href = a["href"]
+        full = urljoin(base_url, href)
+        if not full.startswith("http"):
+            continue
+        low_full = full.lower()
+        if any(bad in low_full for bad in FORM_EXCLUDE):
+            continue
         label = (a.get_text(" ", strip=True) + " " + href).lower()
-        if any(k in label for k in FORM_KEYWORDS):
-            full = urljoin(base_url, href)
-            if full.startswith("http") and full not in result.form_urls:
+        if any(h in label or h in low_full for h in APPLY_HINTS):
+            if full not in result.form_urls:
                 result.form_urls.append(full)
+
+    # 6) telefones publicos (tel: + texto), com deduplicacao por numero
+    seen_phones: set[str] = set()
+
+    def _add_phone(value: str, context: str) -> None:
+        norm = _normalize_phone(value)
+        if norm and norm not in seen_phones:
+            seen_phones.add(norm)
+            result.phones.append(ExtractedPhone(norm, base_url, context))
+
+    for a in soup.select("a[href^=tel]"):
+        _add_phone(a.get("href", "")[4:], "link de telefone (tel:)")
+    for m in PHONE_0800_RE.finditer(text):
+        _add_phone(m.group(0), "telefone 0800 na página")
+    for m in PHONE_RE.finditer(text):
+        _add_phone(m.group(0), "telefone na página")
 
     return result
 
@@ -175,6 +247,7 @@ class ContactExtractor:
             result.pages_fetched.append(url)
             page = extract_from_html(html, url)
             result.emails.extend(page.emails)
+            result.phones.extend(page.phones)
             for f in page.form_urls:
                 if f not in result.form_urls:
                     result.form_urls.append(f)
@@ -187,5 +260,6 @@ class ContactExtractor:
             result.pages_fetched.append(url)
             page = extract_from_html(html, url)
             result.emails = page.emails
+            result.phones = page.phones
             result.form_urls = page.form_urls
         return result

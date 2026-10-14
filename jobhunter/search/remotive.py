@@ -9,7 +9,7 @@ import re
 import requests
 
 from ..logging_setup import get_logger
-from .base import JobResult, JobSource, SearchFilters, within_period
+from .base import JobResult, JobSource, SearchFilters, location_matches, within_period
 
 log = get_logger("search.remotive")
 
@@ -49,9 +49,8 @@ class RemotiveSource(JobSource):
             if not within_period(pub, filters):
                 continue
             location = job.get("candidate_required_location", "")
-            if filters.country and filters.country.lower() not in location.lower():
-                if "worldwide" not in location.lower() and "anywhere" not in location.lower():
-                    continue
+            if not location_matches(location, filters.country):
+                continue
             results.append(JobResult(
                 title=job.get("title", "").strip(),
                 url=job.get("url", "").strip(),

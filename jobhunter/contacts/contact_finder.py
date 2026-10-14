@@ -20,6 +20,7 @@ class ContactDiscoveryReport:
     emails_found: int = 0
     emails_saved: int = 0
     forms_found: int = 0
+    phones_saved: int = 0
     errors: list[str] = field(default_factory=list)
 
 
@@ -54,11 +55,13 @@ class ContactDiscovery:
         site_result = self.extractor.scan_site(website) if website else None
         emails = list(site_result.emails) if site_result else []
         forms = list(site_result.form_urls) if site_result else []
+        phones = list(site_result.phones) if site_result else []
 
         # 2) varre a pagina da vaga (se disponivel) procurando contato
         if job_url:
             page = self.extractor.scan_page(job_url)
             emails.extend(page.emails)
+            phones.extend(page.phones)
             forms.extend([f for f in page.form_urls if f not in forms])
 
         domain = domain_from_url(website) if website else (company["domain"] or "")
@@ -98,6 +101,22 @@ class ContactDiscovery:
                              source_url=form, category="recruitment",
                              status=EmailStatus.FORM_AVAILABLE.value)
             report.forms_found += 1
+
+        seen_phones: set[str] = set()
+        for pc in phones:
+            if not pc.phone or pc.phone in seen_phones:
+                continue
+            seen_phones.add(pc.phone)
+            cid = contact_repo.add(
+                company_id=company_id,
+                phone=pc.phone,
+                domain=domain,
+                source_url=pc.source_url,
+                category="recruitment",
+                status=EmailStatus.PHONE_FOUND.value,
+            )
+            if cid:
+                report.phones_saved += 1
 
         mark_duplicates()
         return report

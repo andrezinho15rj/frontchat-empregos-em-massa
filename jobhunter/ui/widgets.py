@@ -86,6 +86,7 @@ STATUS_COLORS = {
     "E-mail duplicado": "#95A2B8",
     "Contato inadequado para candidatura": "#C98A17",
     "Formulário de candidatura disponível": "#2F6BFF",
+    "Telefone encontrado": "#7C5CFF",
     "Não verificado": "#95A2B8",
     "Enviada": "#2EBD85",
     "Falha no envio": "#E5534B",

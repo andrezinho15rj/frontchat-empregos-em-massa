@@ -93,3 +93,28 @@ def within_period(value: str | None, filters: SearchFilters) -> bool:
     if parsed is None:
         return True  # nao descartar vagas sem data confiavel
     return parsed >= since
+
+
+# Termos de localizacao que indicam vaga ampla/global/remota. Sao aceitos
+# mesmo quando o usuario filtrou por um pais especifico, para nao descartar
+# vagas legitimas que servem o pais.
+_GLOBAL_MARKERS = (
+    "worldwide", "anywhere", "global", "remote", "remoto", "americas",
+    "latam", "latin america", "south america", "america", "any",
+)
+
+
+def location_matches(location: str | None, country: str | None) -> bool:
+    """Verifica se a localizacao da vaga e compativel com o pais pedido.
+
+    Tolerante por design: aceita vagas sem localizacao informada e vagas de
+    alcance global/remoto, evitando descartar resultados validos.
+    """
+    if not country:
+        return True
+    loc = (location or "").lower()
+    if not loc:
+        return True
+    if country.lower() in loc:
+        return True
+    return any(m in loc for m in _GLOBAL_MARKERS)

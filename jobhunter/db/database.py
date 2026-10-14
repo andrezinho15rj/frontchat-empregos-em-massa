@@ -48,12 +48,25 @@ class Database:
         conn = self.connect()
         with self._lock:
             conn.executescript(schema.SCHEMA_SQL)
+            self._migrate(conn)
             conn.execute(
                 "INSERT OR REPLACE INTO meta(key, value) VALUES('schema_version', ?)",
                 (str(schema.SCHEMA_VERSION),),
             )
             conn.commit()
         log.info("Banco de dados inicializado em %s", self.path)
+
+    def _migrate(self, conn: sqlite3.Connection) -> None:
+        """Migracoes idempotentes para bancos criados em versoes anteriores."""
+        migrations = [
+            ("contacts", "phone", "TEXT"),
+        ]
+        for table, column, decl in migrations:
+            cols = {r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+            if column not in cols:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
+                log.info("Migração: adicionada coluna %s.%s", table, column)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_contacts_phone ON contacts(phone)")
 
     def execute(self, sql: str, params: tuple | dict = ()) -> sqlite3.Cursor:
         conn = self.connect()

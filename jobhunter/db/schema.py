@@ -5,7 +5,7 @@ idempotentes (CREATE TABLE IF NOT EXISTS / ADD COLUMN tolerante).
 """
 from __future__ import annotations
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 SCHEMA_SQL = """
 PRAGMA foreign_keys = ON;
@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS contacts (
     company_id     INTEGER REFERENCES companies(id) ON DELETE CASCADE,
     job_id         INTEGER REFERENCES jobs(id) ON DELETE SET NULL,
     email          TEXT,
+    phone          TEXT,
     form_url       TEXT,
     domain         TEXT,
     source_url     TEXT,

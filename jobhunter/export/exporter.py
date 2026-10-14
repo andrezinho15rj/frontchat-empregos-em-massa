@@ -17,6 +17,7 @@ EXPORT_COLUMNS = [
     ("cidade", "Cidade"),
     ("estado", "Estado"),
     ("email", "E-mail"),
+    ("telefone", "Telefone"),
     ("site", "Site da empresa"),
     ("url_vaga", "URL da vaga"),
     ("fonte_contato", "Fonte do contato"),
@@ -51,6 +52,7 @@ def _query(status_filter: str = "", area_filter: str = "", search: str = "",
             COALESCE(NULLIF(j.city,''), c.location) AS cidade,
             j.state AS estado,
             ct.email AS email,
+            ct.phone AS telefone,
             c.website AS site,
             j.url AS url_vaga,
             ct.source_url AS fonte_contato,
@@ -69,7 +71,7 @@ def _query(status_filter: str = "", area_filter: str = "", search: str = "",
     result = []
     seen = set()
     for r in rows:
-        key = (r["empresa"], r["cargo"], r["email"])
+        key = (r["empresa"], r["cargo"], r["email"], r["telefone"])
         if key in seen:
             continue
         seen.add(key)

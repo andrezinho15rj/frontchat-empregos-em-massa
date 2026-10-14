@@ -33,7 +33,7 @@ candidatura em massa com currículo — tudo com revisão e aprovação do usuá
 | Módulo | Situação |
 |---|---|
 | Pesquisa real de vagas | 7 fontes públicas gratuitas, **sem chave** (ver tabela na seção 2) |
-| Extração de contatos | Varre páginas públicas de carreiras/contato, decodifica ofuscação (`[at]`/`[dot]`, Cloudflare) |
+| Extração de contatos | Varre páginas públicas de carreiras/contato; captura **e-mails**, **telefones** e **links reais de candidatura** (ATS: Gupy, Lever, Greenhouse…); decodifica ofuscação (`[at]`/`[dot]`, Cloudflare) |
 | Validação de e-mails | Sintaxe, domínio, registros **MX** (com fallback de DNS público), deduplicação e classificação |
 | Importação de currículo | PDF, DOCX e TXT |
 | Personalização | Modelos com variáveis + IA opcional (nunca inventa qualificações) |
@@ -264,8 +264,12 @@ FrontchatEmpregosEmMassa/
 - As fontes gratuitas sem chave têm **foco em vagas remotas**; vagas
   presenciais brasileiras aparecem quando publicadas nessas fontes.
 - A descoberta de contatos depende do que a empresa publica em seu site; se ela
-  só aceita candidaturas por portal, o programa registra o **link do formulário**
-  em vez de inventar um e-mail.
+  só aceita candidaturas por portal, o programa registra o **link do formulário
+  real de candidatura** (ex.: `jobs.lever.co/...`, Gupy) em vez de inventar um e-mail.
+- **Telefones** só aparecem quando publicados na página (ex.: `tel:` ou
+  `(11) 91234-5678`). O programa nunca gera números.
+- O filtro de **País** é tolerante: vagas remotas/globais não são descartadas só
+  porque não citam o país — isso evita perder resultados válidos.
 - “Encontrado e origem confirmada” significa que o endereço foi **publicado em
   fonte verificável** e o domínio possui MX — não que a caixa postal exista.
 - Envio por OAuth2 (Gmail/Microsoft) exige que cada usuário crie seu próprio

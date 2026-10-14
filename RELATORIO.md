@@ -33,8 +33,12 @@ implementado e **verificado executando** as operações reais descritas abaixo.
   trabalhe conosco, vagas…), extrai `mailto:`, e-mails em texto, e-mails
   ofuscados (`[at]`/`[dot]`, “arroba/ponto”) e proteção Cloudflare
   (`data-cfemail`).
-- Detecta links de **formulário de candidatura**.
-- Teste `tests/test_contacts.py` valida a extração (incluindo Cloudflare).
+- Extrai **telefones** (`tel:` e padrões brasileiros `(11) 91234-5678`,
+  `0800 123 4567`), normalizados sem inventar dígitos.
+- Detecta **links reais de candidatura** (ATS: jobs.lever.co, greenhouse.io,
+  gupy.io, workable, smartrecruiters…) e descarta menus/categorias.
+- Teste `tests/test_contacts.py` valida e-mails, Cloudflare, telefones e
+  armazenamento do telefone no banco.
 
 ### 2.3 Validação de e-mails — VERIFICADO
 - Sintaxe (regex), classificação de adequação (RH vs. setor indevido),
@@ -108,13 +112,13 @@ implementado e **verificado executando** as operações reais descritas abaixo.
 Execução: `run_tests.bat` (ou `python -m unittest discover -s tests -t .`).
 
 ```
-Ran 21 tests ... OK
+Ran 24 tests ... OK
 ```
 
 Cobertura:
 - Banco: persistência após reabrir, unicidade de vaga por URL, exclusão de dados.
 - Validação: sintaxe, classificação, MX real, deduplicação.
-- Contatos: extração de HTML, Cloudflare, formulários.
+- Contatos: extração de HTML, Cloudflare, formulários, telefones e armazenamento.
 - Currículo/modelos: importação DOCX, render de variáveis.
 - Campanha: preparação sem envio + bloqueio de candidatura duplicada.
 - Exportação: CSV e XLSX.
